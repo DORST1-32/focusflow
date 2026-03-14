@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>FocusFlow</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Caveat:wght@500&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+margin:0;
+background:#0a0a0a;
+font-family:'Inter',sans-serif;
+color:white;
+display:flex;
+justify-content:center;
+}
+
+.app{
+width:390px;
+min-height:100vh;
+padding-bottom:100px;
+}
+
+.header{
+text-align:center;
+font-size:24px;
+padding:20px;
+font-weight:600;
+}
+
+.motivation{
+font-family:'Caveat',cursive;
+font-size:22px;
+text-align:center;
+margin:20px;
+opacity:.9;
+}
+
+.goalBox{
+margin:20px;
+background:#141414;
+padding:16px;
+border-radius:14px;
+}
+
+.progressContainer{
+margin:20px;
+height:10px;
+background:#151515;
+border-radius:20px;
+overflow:hidden;
+}
+
+.progressBar{
+height:100%;
+width:0%;
+background:#3a86ff;
+transition:.4s;
+}
+
+.inputArea{
+display:flex;
+gap:8px;
+padding:20px;
+}
+
+input,select{
+background:#141414;
+border:none;
+color:white;
+border-radius:12px;
+padding:10px;
+}
+
+input{flex:1}
+
+button{
+background:#141414;
+border:none;
+color:white;
+padding:10px 14px;
+border-radius:12px;
+cursor:pointer;
+}
+
+.task{
+background:#121212;
+margin:10px 20px;
+padding:14px;
+border-radius:16px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.completed{
+opacity:.4;
+text-decoration:line-through;
+}
+
+.category{
+font-size:11px;
+padding:4px 8px;
+border-radius:8px;
+}
+
+.Work{background:#2b2b2b}
+.Study{background:#1d2a40}
+.Health{background:#1e3c2c}
+.Personal{background:#3a2b1d}
+
+.complete{background:#1f3d2b}
+.fail{background:#3a1c1c}
+
+.footer{
+position:fixed;
+bottom:0;
+width:390px;
+display:flex;
+justify-content:space-around;
+padding:12px 0;
+background:#0a0a0a;
+border-top:1px solid #1a1a1a;
+}
+
+.footer button{
+background:none;
+font-size:12px;
+}
+
+.page{
+display:none;
+padding:20px;
+text-align:center;
+}
+
+canvas{
+display:block;
+margin:auto;
+margin-top:20px;
+}
+
+.weekHeader{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+margin-bottom:5px;
+opacity:.6;
+}
+
+#calendarGrid{
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:6px;
+}
+
+.day{
+height:34px;
+background:#141414;
+border-radius:8px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:12px;
+}
+
+.catRow{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#141414;
+padding:10px;
+border-radius:10px;
+margin-bottom:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<div id="homePage">
+
+<div class="header">FocusFlow</div>
+
+<div class="goalBox">
+Daily Goal
+<input id="goalInput" type="number" value="5">
+<div id="scoreText">Score 0%</div>
+</div>
+
+<div class="progressContainer">
+<div id="progressBar" class="progressBar"></div>
+</div>
+
+<div class="inputArea">
+
+<input id="todoInput" placeholder="Add task">
+
+<select id="categorySelect">
+<option value="Work">Work</option>
+<option value="Study">Study</option>
+<option value="Health">Health</option>
+<option value="Personal">Personal</option>
+</select>
+
+<button onclick="addTodo()">Add</button>
+
+</div>
+
+<div id="todoList"></div>
+
+<div class="motivation" id="homeMotivation"></div>
+
+</div>
+
+<div id="todayPage" class="page">
+
+<h2>Today</h2>
+
+<div id="todayCategories"></div>
+
+<div class="motivation" id="todayMotivation"></div>
+
+<button onclick="home()">Back</button>
+
+</div>
+
+<div id="calendarPage" class="page">
+
+<h2>Calendar</h2>
+
+<div id="calendarGrid"></div>
+
+<h3>7 Day Performance</h3>
+<canvas id="weekCircle" width="120" height="120"></canvas>
+
+<h3>30 Day Performance</h3>
+<canvas id="monthCircle" width="160" height="160"></canvas>
+
+<div class="motivation" id="calendarMotivation"></div>
+
+<button onclick="home()">Back</button>
+
+</div>
+
+<div id="streakPage" class="page">
+
+<h2>Streak</h2>
+
+<div id="streakText"></div>
+
+<div class="motivation" id="streakMotivation"></div>
+
+<button onclick="home()">Back</button>
+
+</div>
+
+<div class="footer">
+
+<button onclick="home()">Home</button>
+<button onclick="openToday()">Today</button>
+<button onclick="openCalendar()">Calendar</button>
+<button onclick="openStreak()">Streak</button>
+
+</div>
+
+</div>
+
+<script>
+
+let todos=JSON.parse(localStorage.getItem("todos"))||[]
+let history=JSON.parse(localStorage.getItem("history"))||[]
+let lastDate=localStorage.getItem("lastDate")||new Date().toISOString().slice(0,10)
+
+const messages=[
+"Keep going.",
+"Consistency wins.",
+"Small steps matter.",
+"Progress is happening.",
+"You’re improving.",
+"Stay focused.",
+"Keep building momentum."
+]
+
+function randomMessage(){
+return messages[Math.floor(Math.random()*messages.length)]
+}
+
+function showMotivation(){
+
+homeMotivation.innerText=randomMessage()
+todayMotivation.innerText=randomMessage()
+calendarMotivation.innerText=randomMessage()
+streakMotivation.innerText=randomMessage()
+
+}
+
+function today(){
+return new Date().toISOString().slice(0,10)
+}
+
+function save(){
+
+localStorage.setItem("todos",JSON.stringify(todos))
+localStorage.setItem("history",JSON.stringify(history))
+localStorage.setItem("lastDate",today())
+
+}
+
+function midnightReset(){
+
+if(lastDate!==today()){
+
+let goal=parseInt(goalInput.value)||1
+let done=todos.filter(t=>t.done).length
+
+let rate=Math.round((done/goal)*100)
+
+history.push({
+date:lastDate,
+rate:rate
+})
+
+todos=[]
+lastDate=today()
+
+save()
+
+}
+
+}
+
+function addTodo(){
+
+let goal=parseInt(goalInput.value)||1
+
+if(todos.length>=goal){
+alert("Daily goal reached")
+return
+}
+
+let text=todoInput.value
+let cat=categorySelect.value
+
+if(!text)return
+
+todos.push({
+text:text,
+category:cat,
+done:false,
+date:today()
+})
+
+todoInput.value=""
+
+save()
+render()
+
+}
+
+function render(){
+
+todoList.innerHTML=""
+
+todos.forEach(t=>{
+
+let div=document.createElement("div")
+div.className="task"
+
+div.innerHTML=`
+<span class="${t.done?'completed':''}">${t.text}</span>
+<span class="category ${t.category}">${t.category}</span>
+<button class="complete">Done</button>
+<button class="fail">Fail</button>
+`
+
+div.children[2].onclick=()=>{
+t.done=!t.done
+save()
+render()
+}
+
+div.children[3].onclick=()=>{
+todos.splice(todos.indexOf(t),1)
+save()
+render()
+}
+
+todoList.appendChild(div)
+
+})
+
+updateStats()
+renderToday()
+renderCalendar()
+renderCircles()
+renderStreak()
+showMotivation()
+
+}
+
+function updateStats(){
+
+let goal=parseInt(goalInput.value)||1
+let done=todos.filter(t=>t.done).length
+
+let percent=Math.min(100,Math.round((done/goal)*100))
+
+progressBar.style.width=percent+"%"
+scoreText.innerText="Score "+percent+"%"
+
+}
+
+function renderToday(){
+
+let cats=["Work","Study","Health","Personal"]
+
+todayCategories.innerHTML=""
+
+cats.forEach(cat=>{
+
+let list=todos.filter(t=>t.category==cat)
+
+let done=list.filter(t=>t.done).length
+
+let percent=list.length?Math.round(done/list.length*100):0
+
+let row=document.createElement("div")
+row.className="catRow"
+
+row.innerHTML=`<div>${cat}</div><div>${percent}%</div>`
+
+todayCategories.appendChild(row)
+
+})
+
+}
+
+function renderCalendar(){
+
+calendarGrid.innerHTML=""
+
+for(let i=1;i<=30;i++){
+
+let div=document.createElement("div")
+div.className="day"
+
+let rate=history[i]?history[i].rate:0
+
+let color="#141414"
+
+if(rate>=100)color="#2ec4b6"
+else if(rate>=60)color="#4361ee"
+else if(rate>=30)color="#2f3e6f"
+
+div.style.background=color
+div.innerText=i
+
+calendarGrid.appendChild(div)
+
+}
+
+}
+
+function drawCircle(id,percent,color){
+
+let c=document.getElementById(id)
+let ctx=c.getContext("2d")
+
+ctx.clearRect(0,0,c.width,c.height)
+
+ctx.beginPath()
+ctx.arc(c.width/2,c.height/2,40,0,Math.PI*2)
+ctx.strokeStyle="#222"
+ctx.lineWidth=8
+ctx.stroke()
+
+ctx.beginPath()
+ctx.arc(c.width/2,c.height/2,40,-Math.PI/2,(Math.PI*2)*(percent/100)-Math.PI/2)
+ctx.strokeStyle=color
+ctx.lineWidth=8
+ctx.stroke()
+
+}
+
+function renderCircles(){
+
+let last7=history.slice(-7)
+let last30=history.slice(-30)
+
+let avg7=0
+let avg30=0
+
+if(last7.length>0){
+avg7=last7.reduce((a,b)=>a+b.rate,0)/last7.length
+}
+
+if(last30.length>0){
+avg30=last30.reduce((a,b)=>a+b.rate,0)/last30.length
+}
+
+drawCircle("weekCircle",avg7,"#3a86ff")
+drawCircle("monthCircle",avg30,"#2ec4b6")
+
+}
+
+function renderStreak(){
+
+let streak=0
+
+for(let i=history.length-1;i>=0;i--){
+
+if(history[i].rate>=100) streak++
+else break
+
+}
+
+streakText.innerText="🔥 "+streak+" Day Streak"
+
+}
+
+function switchPage(id){
+
+homePage.style.display="none"
+
+document.querySelectorAll(".page").forEach(p=>p.style.display="none")
+
+document.getElementById(id).style.display="block"
+
+showMotivation()
+
+}
+
+function home(){
+
+document.querySelectorAll(".page").forEach(p=>p.style.display="none")
+
+homePage.style.display="block"
+
+showMotivation()
+
+}
+
+function openToday(){switchPage("todayPage")}
+function openCalendar(){switchPage("calendarPage")}
+function openStreak(){switchPage("streakPage")}
+
+midnightReset()
+render()
+
+</script>
+
+</body>
+</html>
